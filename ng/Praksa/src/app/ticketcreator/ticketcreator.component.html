@@ -1,0 +1,13 @@
+    <div class="container ticket" >
+        <app-ticket class="ticket"></app-ticket>
+        <div class = "btn-group-xs btn-group-vertical">
+                <button class="btn btn-default" type="button" (click)="registerTicket()">Submit</button>
+                <button class="btn btn-default" type="button" (click)="resetTicket()">Reset</button>
+                <button class="btn btn-default" type="button" (click)="randomTicket()">Random</button>
+        </div>
+        
+    </div>
+    <div class="container" style="width: 54%">
+        <label>You have picked {{num}} out of 7 numbers</label>
+    </div>
+   

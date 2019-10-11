@@ -1,0 +1,4 @@
+<div class ="ticket-grid ticket-grid-table" >
+    <app-ticket-field *ngFor="let number of ticketHelper.numbers;let i=index" [value]='i+1' [mode]='mode' [picked]='picked(i+1)' > 
+    </app-ticket-field>
+</div>

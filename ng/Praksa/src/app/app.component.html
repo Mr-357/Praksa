@@ -1,0 +1,31 @@
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+      <div class="navbar-header">
+          <a class="navbar-brand">
+            <img src="assets/images/icon.jpg" class="d-inline-block align-top"  style = "height: 49px;width:50px;margin-top: -15px;">
+          </a>
+          <a routerLink="/" class="navbar-brand">Lotto simulator</a>
+      </div>
+      <ul class="nav navbar-nav">
+          <li routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">
+            <a routerLink="/" >Home 
+              <span class="sr-only">(current)</span>
+            </a>
+          </li>
+          <li routerLinkActive="active">
+            <a routerLink="/draw">Draw</a>
+          </li>
+          <li routerLinkActive="active" class="dropdown" dropdown> <!-- {1} -->
+              <a dropdownToggle role="button"> <!-- {2} -->
+                Create a ticket <span class="caret"></span>
+              </a>
+              <ul *dropdownMenu class="dropdown-menu"> <!-- {3} -->
+                  <li><a routerLink="/pick">Create a single ticket</a></li>
+                  <li><a routerLink="/generate">Auto-generate multiple tickets</a></li>
+              </ul>
+          </li>
+      </ul>
+  </div>
+</nav>
+<router-outlet></router-outlet>
+

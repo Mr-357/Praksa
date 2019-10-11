@@ -1,0 +1,79 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**
+!**/src/test/**
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+
+### VS Code ###
+.vscode/
+
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+
+# compiled output
+/ng/Praksa/dist
+/ng/Praksa/tmp
+/ng/Praksa/out-tsc
+# Only exists if Bazel was run
+/ng/Praksa/bazel-out
+
+# dependencies
+/ng/Praksa/node_modules
+
+# profiling files
+/ng/Praksachrome-profiler-events.json
+/ng/Praksaspeed-measure-plugin.json
+
+# IDEs and editors
+/ng/Praksa/.idea
+/ng/Praksa.project
+/ng/Praksa.classpath
+/ng/Praksa.c9/
+/ng/Praksa*.launch
+/ng/Praksa.settings/
+/ng/Praksa*.sublime-workspace
+
+# IDE - VSCode
+/ng/Praksa.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+/ng/Praksa.history/*
+
+# misc
+/ng/Praksa/.sass-cache
+/ng/Praksa/connect.lock
+/ng/Praksa/coverage
+/ng/Praksa/libpeerconnection.log
+/ng/Praksanpm-debug.log
+/ng/Praksayarn-error.log
+/ng/Praksatestem.log
+/ng/Praksa/typings
+
+# System Files
+.DS_Store
+Thumbs.db
+

@@ -1,0 +1,9 @@
+.selected{
+    background-color: red;
+}
+.hit{
+    background-color: green;
+}
+.miss{
+    background-color: yellow;
+}

@@ -1,0 +1,39 @@
+/* You can add global styles to this file, and also import other style files */
+.ticket-grid{
+    display: grid;
+    grid-template-rows: 20px 20px 20px;
+    grid-template-columns: repeat(13,auto);
+    row-gap: 1px;
+    /*border: 1px black solid;*/
+    border-radius: 2px;
+    text-align: center;
+}
+.ticket-grid-table {
+    width:100%;
+}
+
+.ticket{
+    display: flex;
+    align-items: center;
+    width: 70%;
+    text-align: center;
+    justify-content: center;
+}
+.ticket-field{
+    border: 1px black solid;
+    user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-user-select: none;
+}
+.no-select{
+    user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-user-select: none;
+}
+
+.highlightTicket{
+    background-color: #337ab7;
+    color: #fff;
+}

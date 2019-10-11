@@ -1,0 +1,20 @@
+<div class="container"style="width: 60%;">
+        <h2>Submitted tickets</h2>                 
+        <ul class="pagination">
+            <li *ngFor="let page of pages" [ngClass]="{'active': page == current}">
+                    <a [routerLink]="['/']"
+                    [queryParams]="{page:page}" *ngIf="page!=0; else elseTemplate" >{{page}}</a>
+            <ng-template #elseTemplate>
+                <a class = "no-select">...</a>
+            </ng-template>
+        </li>
+        </ul>
+        <div  *ngFor="let ticket of tickets; let i = index" >
+            <div class="row" *ngIf="i%4==0">
+                <div [ngClass]="{'highlightTicket': ticket.id==myticket}" class="col-sm-3 well">{{ticket.numbers}}</div>
+                <div [ngClass]="{'highlightTicket': tickets[i + 1].id==myticket}" class="col-sm-3 well" *ngIf="i + 1 < tickets.length">{{ tickets[i + 1].numbers }}</div>
+                <div [ngClass]="{'highlightTicket': tickets[i + 2].id==myticket}" class="col-sm-3 well" *ngIf="i + 2 < tickets.length">{{ tickets[i + 2].numbers }}</div>
+                <div [ngClass]="{'highlightTicket': tickets[i + 3].id==myticket}" class="col-sm-3 well" *ngIf="i + 3 < tickets.length">{{ tickets[i + 3].numbers }}</div>
+            </div>
+        </div>
+</div>
