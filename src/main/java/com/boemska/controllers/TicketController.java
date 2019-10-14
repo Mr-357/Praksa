@@ -2,7 +2,6 @@ package com.boemska.controllers;
 import com.boemska.data.*;
 import com.boemska.helpers.CombinationFinder;
 import com.boemska.repos.WinnerRepository;
-import org.paukov.combinatorics3.CombinationGenerator;
 import org.paukov.combinatorics3.Generator;
 import org.springframework.data.domain.Pageable;
 
@@ -25,11 +24,11 @@ import org.springframework.web.bind.annotation.*;
 public class TicketController {
 
 
-    private List<Integer> checker = new ArrayList<Integer>();
+    private List<Integer> checker = new ArrayList<Integer>(); //helper structure for validating tickets
     private ArrayList<Ticket> tickets = new ArrayList<>();
     private List<List<Ticket>> hits = new ArrayList<>();
-    private HashSet latest;
-    private List<HashSet> sets = new ArrayList<>();
+    private HashSet latest; // latest winner, change name?
+    private List<HashSet> sets = new ArrayList<>(); //for intersecting, change name to categories?
     @Autowired
     private TicketRepository ticketRepository;
     @Autowired
@@ -51,32 +50,10 @@ public class TicketController {
     private void loadAll() {
         tickets = (ArrayList<Ticket>) ticketRepository.findAll();
     }
-    @CrossOrigin()
-    @GetMapping("/list")
-    public List<Ticket> find(@RequestParam int n) { //rename to find-n, possibly remove
-        Winner latest = winnerRepository.getOne((int)winnerRepository.count());
-        if(hits.size()==5)
-        {
-            System.out.println("\n\n\n"+hits.get(n-3).size()+"\n\n\n"+latest.getNumbers()+"\n\n\n");
-            return hits.get(n-3);
-        }
-        if(n==3) {
-           hits.add(tickets
-                   .parallelStream()
-                   .filter(x->CombinationFinder.has(x,new NumberHolder(latest.getNumbers()),n))
-                   .collect(Collectors.toList()));
-        }
-        else{
-            hits.add(hits.get(n-4).parallelStream()
-                    .filter(x->CombinationFinder.has(x,new NumberHolder(latest.getNumbers()),n))
-                    .collect(Collectors.toList()));
-            hits.get(n-4).removeAll(hits.get(n-3));
-        }
-
-        System.out.println("\n\n\n"+hits.get(n-3).size()+"\n\n\n"+latest.getNumbers()+"\n\n\n");
-        return hits.get(n-3);
+    private void loadLatestWinner() {
+        if(latest==null)
+            latest = new HashSet(new NumberHolder(winnerRepository.getOne((int)winnerRepository.count()).getNumbers()).getNumbers());
     }
-
     @CrossOrigin()
     @RequestMapping(value = "/register", method = RequestMethod.POST)
     public IDHolder register(@RequestBody NumberHolder holder) throws Exception{
@@ -172,16 +149,16 @@ public class TicketController {
         ticketRepository.saveAll(tosave);
 
     }
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     @CrossOrigin
-    @GetMapping("/stats")
+    @GetMapping("/stats") // TODO: tidy up
     public StatsHolder getStats(@RequestParam String mode){
         hits= new ArrayList<>();
         StatsHolder ret = new StatsHolder();
         ret.total=(int)ticketRepository.count();
         int[] luckiest = new int [39];
         int[] mostpicked =  new int [39];
-       // this.prepare();
+       // this.prepare();   //   nije potrebno ako je vec izvlaceno??
         List<Winner> winners = winnerRepository.findAll();
         for(int i=0;i<39;i++){
             luckiest[i]=0;
@@ -217,7 +194,7 @@ public class TicketController {
         long start = System.currentTimeMillis();
         if(mode.equals("set"))
         {
-            ret.threes=this.findSet(3).size();
+            ret.threes=this.findSet(3).size();  // pametniji nacin??
             ret.fours=this.findSet(4).size();
             ret.fives=this.findSet(5).size();
             ret.sixes=this.findSet(6).size();
@@ -239,9 +216,9 @@ public class TicketController {
             ret.sevens=this.find(7).size();
         }
         long end = System.currentTimeMillis();
-        System.out.println(end-start);
+        System.out.println("vreme pretrage:"+(end-start));
         Winner upd = winnerRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).get(0);
-        upd.setThrees(ret.threes);
+        upd.setThrees(ret.threes); //pametniji nacin???
         upd.setFours(ret.fours);
         upd.setFives(ret.fives);
         upd.setSixes(ret.sixes);
@@ -250,30 +227,39 @@ public class TicketController {
         return ret;
     }
 
-
-
-
-    private void loadLatestWinner()
-    {
-        if(latest==null)
-        latest = new HashSet(new NumberHolder(winnerRepository.getOne((int)winnerRepository.count()).getNumbers()).getNumbers());
-    }
-
-
-
-
     //TODO:
     //new controller?
-    //frontend:
-    //  >interface
-    //  >components
-    //  >routes
-
     @CrossOrigin()
-    @GetMapping("/listSet")
-    public List<Ticket> findSet(@RequestParam int n) { //for whole data
-        this.loadLatestWinner();
+    @GetMapping("/list") // double for loop, default collections, doesn't work "realtime"
+    public List<Ticket> find(@RequestParam int n) { //rename to find-n, possibly remove
+        Winner latest = winnerRepository.getOne((int)winnerRepository.count());
         if(hits.size()==5)
+        {
+            System.out.println("\n\n\n"+hits.get(n-3).size()+"\n\n\n"+latest.getNumbers()+"\n\n\n");
+            return hits.get(n-3);
+        }
+        if(n==3) {
+            hits.add(tickets
+                    .parallelStream()
+                    .filter(x->CombinationFinder.has(x,new NumberHolder(latest.getNumbers()),n))
+                    .collect(Collectors.toList()));
+        }
+        else{
+            hits.add(hits.get(n-4).parallelStream()
+                    .filter(x->CombinationFinder.has(x,new NumberHolder(latest.getNumbers()),n))
+                    .collect(Collectors.toList()));
+            hits.get(n-4).removeAll(hits.get(n-3));
+        }
+
+        System.out.println("\n\n\n"+hits.get(n-3).size()+"\n\n\n"+latest.getNumbers()+"\n\n\n");
+        return hits.get(n-3);
+    }
+//////////////////////////////////////////////////////////////////////////////
+    @CrossOrigin()
+    @GetMapping("/listSet") // hash sets implementation of find(), slightly faster
+    public List<Ticket> findSet(@RequestParam int n) {
+        this.loadLatestWinner();
+        if(hits.size()==5) // if 3,4,5,6,7 sets are found just return what is needed;
         {
             System.out.println("\n\n\n"+hits.get(n-3).size()+"\n\n\n"+latest+"\n\n\n");
             return hits.get(n-3);
@@ -284,7 +270,7 @@ public class TicketController {
                     .filter(x->CombinationFinder.hasSet(x,latest,n))
                     .collect(Collectors.toList()));
         }
-        else{
+        else {
             hits.add(hits.get(n-4)
                     .parallelStream()
                     .filter(x->CombinationFinder.hasSet(x,latest,n))
@@ -295,9 +281,9 @@ public class TicketController {
         System.out.println("\n\n\n"+hits.get(n-3).size()+"\n\n\n"+latest+"\n\n\n");
         return hits.get(n-3);
     }
-
+/////////////////////////////////////////////////////////////////////////////
     @CrossOrigin()
-    @GetMapping("/intersect")
+    @GetMapping("/intersect") //a different approach to find(), can work "realtime" but is slower
     public List<Ticket> intersect(@RequestParam int n){
         NumberHolder win = NumberGenerator.getInstance().getWinningCombination();
         ArrayList<Ticket> ret = new ArrayList<>();
@@ -313,10 +299,4 @@ public class TicketController {
         return ret;
     }
 
-    @GetMapping("/test")
-    public void Test(){
-        HashSet win = new HashSet(new NumberHolder("1,13,15,19,22,25,32").getNumbers());
-       Ticket ticket = new Ticket("1,12,15,18,22,25,31");
-        System.out.println(CombinationFinder.hasSet(ticket,win,4));
-    }
 }
