@@ -2,10 +2,13 @@ package com.boemska.controllers;
 import com.boemska.data.*;
 import com.boemska.helpers.CombinationFinder;
 import com.boemska.repos.WinnerRepository;
+import org.paukov.combinatorics3.CombinationGenerator;
+import org.paukov.combinatorics3.Generator;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import com.boemska.exceptions.BadRequestException;
@@ -24,13 +27,14 @@ public class TicketController {
 
     private List<Integer> checker = new ArrayList<Integer>();
     private ArrayList<Ticket> tickets = new ArrayList<>();
-    private List<List<Ticket>> winners = new ArrayList<>();
+    private List<List<Ticket>> hits = new ArrayList<>();
+    private HashSet latest;
+    private List<HashSet> sets = new ArrayList<>();
     @Autowired
     private TicketRepository ticketRepository;
     @Autowired
     private WinnerRepository winnerRepository;
-    private boolean isValid(NumberHolder holder)
-    {
+    private boolean isValid(NumberHolder holder) {
         for (Integer i:holder.getNumbers()) {
             if(i<0 || i>39) {
                 return false;
@@ -46,32 +50,31 @@ public class TicketController {
     }
     private void loadAll() {
         tickets = (ArrayList<Ticket>) ticketRepository.findAll();
-
     }
     @CrossOrigin()
     @GetMapping("/list")
-    public List<Ticket> find(@RequestParam int n) { //rename to find-n
+    public List<Ticket> find(@RequestParam int n) { //rename to find-n, possibly remove
         Winner latest = winnerRepository.getOne((int)winnerRepository.count());
-        if(winners.size()==5)
+        if(hits.size()==5)
         {
-            System.out.println("\n\n\n"+winners.get(n-3).size()+"\n\n\n"+latest.getNumbers()+"\n\n\n");
-            return winners.get(n-3);
+            System.out.println("\n\n\n"+hits.get(n-3).size()+"\n\n\n"+latest.getNumbers()+"\n\n\n");
+            return hits.get(n-3);
         }
         if(n==3) {
-           winners.add(tickets
+           hits.add(tickets
                    .parallelStream()
                    .filter(x->CombinationFinder.has(x,new NumberHolder(latest.getNumbers()),n))
                    .collect(Collectors.toList()));
         }
         else{
-            winners.add(winners.get(n-4).parallelStream()
+            hits.add(hits.get(n-4).parallelStream()
                     .filter(x->CombinationFinder.has(x,new NumberHolder(latest.getNumbers()),n))
                     .collect(Collectors.toList()));
-            winners.get(n-4).removeAll(winners.get(n-3));
+            hits.get(n-4).removeAll(hits.get(n-3));
         }
 
-        System.out.println("\n\n\n"+winners.get(n-3).size()+"\n\n\n"+latest.getNumbers()+"\n\n\n");
-        return winners.get(n-3);
+        System.out.println("\n\n\n"+hits.get(n-3).size()+"\n\n\n"+latest.getNumbers()+"\n\n\n");
+        return hits.get(n-3);
     }
 
     @CrossOrigin()
@@ -116,6 +119,15 @@ public class TicketController {
     @GetMapping("/prepare")
     public void prepare() {
         this.loadAll();
+        for(int i=0;i<39;i++){
+            this.sets.add(new HashSet());
+        }
+        for (Ticket t: this.tickets) {
+            NumberHolder tmp = new NumberHolder(t.getNumbers());
+            for (int i:tmp.getNumbers()) {
+                this.sets.get(i-1).add(t);
+            }
+        }
     }
 
     @CrossOrigin()
@@ -124,6 +136,7 @@ public class TicketController {
         int ret = NumberGenerator.getInstance().generateSingle();
         if(NumberGenerator.getInstance().isCompleted()){
             winnerRepository.save(new Winner(NumberGenerator.getInstance().getWinningCombination().getStringNumbers(), LocalDateTime.now()));
+            latest=null;
         }
         return ret;
     }
@@ -162,12 +175,13 @@ public class TicketController {
 
     @CrossOrigin
     @GetMapping("/stats")
-    public StatsHolder getStats(){
+    public StatsHolder getStats(@RequestParam String mode){
+        hits= new ArrayList<>();
         StatsHolder ret = new StatsHolder();
         ret.total=(int)ticketRepository.count();
         int[] luckiest = new int [39];
         int[] mostpicked =  new int [39];
-        this.prepare();
+       // this.prepare();
         List<Winner> winners = winnerRepository.findAll();
         for(int i=0;i<39;i++){
             luckiest[i]=0;
@@ -200,11 +214,32 @@ public class TicketController {
         }
         ret.luckiest=retlucky;
         ret.mostPicked=retpick;
-        ret.threes=this.find(3).size();
-        ret.fours=this.find(4).size();
-        ret.fives=this.find(5).size();
-        ret.sixes=this.find(6).size();
-        ret.sevens=this.find(7).size();
+        long start = System.currentTimeMillis();
+        if(mode.equals("set"))
+        {
+            ret.threes=this.findSet(3).size();
+            ret.fours=this.findSet(4).size();
+            ret.fives=this.findSet(5).size();
+            ret.sixes=this.findSet(6).size();
+            ret.sevens=this.findSet(7).size();
+        }
+        else if (mode.equals("intersect"))
+        {
+            ret.threes=this.intersect(3).size();
+            ret.fours=this.intersect(4).size();
+            ret.fives=this.intersect(5).size();
+            ret.sixes=this.intersect(6).size();
+            ret.sevens=this.intersect(7).size();
+        }
+        else{
+            ret.threes=this.find(3).size();
+            ret.fours=this.find(4).size();
+            ret.fives=this.find(5).size();
+            ret.sixes=this.find(6).size();
+            ret.sevens=this.find(7).size();
+        }
+        long end = System.currentTimeMillis();
+        System.out.println(end-start);
         Winner upd = winnerRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).get(0);
         upd.setThrees(ret.threes);
         upd.setFours(ret.fours);
@@ -218,6 +253,11 @@ public class TicketController {
 
 
 
+    private void loadLatestWinner()
+    {
+        if(latest==null)
+        latest = new HashSet(new NumberHolder(winnerRepository.getOne((int)winnerRepository.count()).getNumbers()).getNumbers());
+    }
 
 
 
@@ -229,4 +269,54 @@ public class TicketController {
     //  >components
     //  >routes
 
+    @CrossOrigin()
+    @GetMapping("/listSet")
+    public List<Ticket> findSet(@RequestParam int n) { //for whole data
+        this.loadLatestWinner();
+        if(hits.size()==5)
+        {
+            System.out.println("\n\n\n"+hits.get(n-3).size()+"\n\n\n"+latest+"\n\n\n");
+            return hits.get(n-3);
+        }
+        if(n==3) {
+            hits.add(tickets
+                    .parallelStream()
+                    .filter(x->CombinationFinder.hasSet(x,latest,n))
+                    .collect(Collectors.toList()));
+        }
+        else{
+            hits.add(hits.get(n-4)
+                    .parallelStream()
+                    .filter(x->CombinationFinder.hasSet(x,latest,n))
+                    .collect(Collectors.toList()));
+            hits.get(n-4).removeAll(hits.get(n-3));
+        }
+
+        System.out.println("\n\n\n"+hits.get(n-3).size()+"\n\n\n"+latest+"\n\n\n");
+        return hits.get(n-3);
+    }
+
+    @CrossOrigin()
+    @GetMapping("/intersect")
+    public List<Ticket> intersect(@RequestParam int n){
+        NumberHolder win = NumberGenerator.getInstance().getWinningCombination();
+        ArrayList<Ticket> ret = new ArrayList<>();
+        Consumer<List<Integer>> t = o -> {
+            HashSet first = new HashSet(this.sets.get(o.get(0)-1));
+            for (int i=1;i<o.size();i++) {
+                first.retainAll(this.sets.get(o.get(i)-1));
+            }
+            ret.addAll(first);
+        };
+        Generator.combination(win.getNumbers()).simple(n).stream().forEach(t);
+        System.out.println(ret.size());
+        return ret;
+    }
+
+    @GetMapping("/test")
+    public void Test(){
+        HashSet win = new HashSet(new NumberHolder("1,13,15,19,22,25,32").getNumbers());
+       Ticket ticket = new Ticket("1,12,15,18,22,25,31");
+        System.out.println(CombinationFinder.hasSet(ticket,win,4));
+    }
 }

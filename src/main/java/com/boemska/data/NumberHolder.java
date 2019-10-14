@@ -25,6 +25,7 @@ public class NumberHolder {
                 .mapToInt(Integer::parseInt)
                 .boxed()
                 .collect(toList());
+        Collections.sort(this.numbers);
     }
 
     public String getStringNumbers() {

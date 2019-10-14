@@ -5,6 +5,7 @@ import com.boemska.data.Ticket;
 import org.paukov.combinatorics3.Generator;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 public class CombinationFinder {
@@ -23,4 +24,10 @@ public class CombinationFinder {
         return false;
     }
 
+    public static boolean hasSet(Ticket t,HashSet winner,int n){
+        NumberHolder temp = new NumberHolder(t.getNumbers());
+        HashSet ticketSet = new HashSet(temp.getNumbers());
+        ticketSet.retainAll(winner);
+        return ticketSet.size()>=n;
+    }
 }
