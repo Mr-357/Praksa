@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.boemska.exceptions.BadRequestException;
@@ -27,6 +28,10 @@ public class TicketController {
     private List<Integer> checker = new ArrayList<Integer>(); //helper structure for validating tickets
     private ArrayList<Ticket> tickets = new ArrayList<>();
     private List<List<Ticket>> hits = new ArrayList<>();
+    Map<ThreeCombo,ArrayList<Ticket>> threeComboTicketMap = new HashMap<>();
+    Map<FourCombo,ArrayList<Ticket>> fourComboTicketMap = new HashMap<>();
+    Map<FiveCombo,ArrayList<Ticket>> fiveComboTicketMap = new HashMap<>();
+    Map<SixCombo,ArrayList<Ticket>> sixComboTicketMap = new HashMap<>();
     private HashSet latest; // latest winner, change name?
     private List<HashSet> sets = new ArrayList<>(); //for intersecting, change name to categories?
     @Autowired
@@ -77,13 +82,11 @@ public class TicketController {
 
         return  ticketRepository.findAll(page).getContent();
     }
-    
     @CrossOrigin()
     @GetMapping("/pages")
     public int pages(){
         return ((int) ticketRepository.count()) / 24 + 1;
     }
-
     @CrossOrigin()
     @GetMapping("/tickets/single")
     public Ticket getTicket(@RequestParam String id){
@@ -96,19 +99,41 @@ public class TicketController {
     @GetMapping("/prepare")
     public void prepare() {
         this.loadAll();
-        for(int i=0;i<39;i++){
-            this.sets.add(new HashSet());
-        }
-        for (Ticket t: this.tickets) {
-            NumberHolder tmp = new NumberHolder(t.getNumbers());
-            for (int i:tmp.getNumbers()) {
-                this.sets.get(i-1).add(t);
+        for(Ticket t : this.tickets) {
+            for(int i=3;i<=6;i++){
+                Consumer<List<Integer>> save =  x ->{
+                    switch (x.size()){
+                        case 3: threeComboTicketMap.computeIfAbsent(new ThreeCombo(x), y->new ArrayList<Ticket>());
+                        threeComboTicketMap.get(new ThreeCombo(x)).add(t);
+                        break;
+                        case 4: fourComboTicketMap.computeIfAbsent(new FourCombo(x), y->new ArrayList<Ticket>());
+                        fourComboTicketMap.get(new FourCombo(x)).add(t);
+                        break;
+                        case 5: fiveComboTicketMap.computeIfAbsent(new FiveCombo(x), y->new ArrayList<Ticket>());
+                        fiveComboTicketMap.get(new FiveCombo(x)).add(t);
+                        break;
+                        case 6: sixComboTicketMap.computeIfAbsent(new SixCombo(x), y->new ArrayList<Ticket>());
+                        sixComboTicketMap.get(new SixCombo(x)).add(t);
+                        break;
+                        default: throw new RuntimeException("bad combination");
+                    }
+                };
+                Generator.combination(new NumberHolder(t.getNumbers()).getNumbers()).simple(i).forEach(save);
             }
-        }
-    }
 
+        }
+//        for(int i=0;i<39;i++){
+//            this.sets.add(new HashSet());
+//        }
+//        for (Ticket t: this.tickets) {
+//            NumberHolder tmp = new NumberHolder(t.getNumbers());
+//            for (int i:tmp.getNumbers()) {
+//                this.sets.get(i-1).add(t);
+//            }
+//        }
+    }
     @CrossOrigin()
-    @GetMapping("/draw")
+    @GetMapping("/draw") // change to websockets?
     public int draw() {
         int ret = NumberGenerator.getInstance().generateSingle();
         if(NumberGenerator.getInstance().isCompleted()){
@@ -200,13 +225,13 @@ public class TicketController {
             ret.sixes=this.findSet(6).size();
             ret.sevens=this.findSet(7).size();
         }
-        else if (mode.equals("intersect"))
+        else if (mode.equals("hash"))
         {
-            ret.threes=this.intersect(3).size();
-            ret.fours=this.intersect(4).size();
-            ret.fives=this.intersect(5).size();
-            ret.sixes=this.intersect(6).size();
-            ret.sevens=this.intersect(7).size();
+            ret.threes=this.hashFind(3).size();
+            ret.fours=this.hashFind(4).size();
+            ret.fives=this.hashFind(5).size();
+            ret.sixes=this.hashFind(6).size();
+            ret.sevens=this.hashFind(7).size();
         }
         else{
             ret.threes=this.find(3).size();
@@ -282,21 +307,55 @@ public class TicketController {
         return hits.get(n-3);
     }
 /////////////////////////////////////////////////////////////////////////////
-    @CrossOrigin()
-    @GetMapping("/intersect") //a different approach to find(), can work "realtime" but is slower
-    public List<Ticket> intersect(@RequestParam int n){
-        NumberHolder win = NumberGenerator.getInstance().getWinningCombination();
-        ArrayList<Ticket> ret = new ArrayList<>();
-        Consumer<List<Integer>> t = o -> {
+//    @CrossOrigin()
+//    @GetMapping("/intersect") //a different approach to find(), can work "realtime" but is slower
+    private List<Ticket> intersect(@RequestParam int n){ //remove parameter , lokalna funkcija pozvana iz draw? , dodaj load on demand iz baze? npr samo jedinice itd itd
+        NumberHolder win = NumberGenerator.getInstance().getWinningCombination();  //change to get inprogress
+        ArrayList<Ticket> ret = new ArrayList<>(); //remove ?
+        Consumer<List<Integer>> find = o -> {
+            //if(!checked.exists(o)     alternativno posto je o lista
+            //checked.add(o)            razlika o i checked liste?
+            //else                      checked3,checked4 itd?
+            //return?
             HashSet first = new HashSet(this.sets.get(o.get(0)-1));
             for (int i=1;i<o.size();i++) {
                 first.retainAll(this.sets.get(o.get(i)-1));
             }
             ret.addAll(first);
         };
-        Generator.combination(win.getNumbers()).simple(n).stream().forEach(t);
+        Generator.combination(win.getNumbers()).simple(n).stream().forEach(find);  // ovo n menjamo sa inprogress.size ili da ovo nekako zamenimo resenjem iz find?
         System.out.println(ret.size());
         return ret;
     }
 
+    @GetMapping("/test")
+    public void test(){
+        List<List<Integer>> tmp = new ArrayList<>();
+        for(int i=3;i<=7;i++)
+        Generator.combination(1,2,3,4,5,6,7).simple(i).stream().forEach(tmp::add);
+        System.out.println(tmp.size());
+        tmp.forEach(System.out::println);
+    }
+
+
+    //TODO: napravi hasheve od kombinacija za svaki ticket
+    //cuvaj hasheve za x u strukturi x npr hesh za svaku trojku u trojki
+    //pod hash se misli objekat koji ima u sebi hash+referencu za tiket
+    //pretraga hashmape kad dodje gotova kombinacija
+    //kasnija optimizacija: ucitavanje tiketa koji imaju svoj hash preko baze, ne cuvati sve u memoriji
+    private List<Ticket> hashFind(@RequestParam int n){
+        NumberHolder win = NumberGenerator.getInstance().getWinningCombination();  //change to get inprogress
+        ArrayList<Ticket> ret = new ArrayList<>(); //remove ?
+        Consumer<List<Integer>> find = o -> {
+           switch (o.size()){
+               case 3: ret.addAll(threeComboTicketMap.get(new ThreeCombo(o)));break;
+               case 4: ret.addAll(fourComboTicketMap.get(new FourCombo(o)));break;
+               case 5: ret.addAll(fiveComboTicketMap.get(new FiveCombo(o)));break;
+               case 6: ret.addAll(sixComboTicketMap.get(new SixCombo(o)));break;   // null pointer
+           }
+        };
+        Generator.combination(win.getNumbers()).simple(n).stream().forEach(find);  // ovo n menjamo sa inprogress.size ili da ovo nekako zamenimo resenjem iz find?
+        System.out.println(ret.size());
+        return ret;
+    }
 }

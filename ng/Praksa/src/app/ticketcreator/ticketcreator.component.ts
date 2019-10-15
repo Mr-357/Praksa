@@ -41,10 +41,10 @@ export class TicketcreatorComponent implements OnInit {
     if(numbers.numbers.length==7)
     {
      
-      await this.ticketService.createTicket(numbers).subscribe(id=>
+      await this.ticketService.createTicket(numbers).subscribe(async id=>
         {
           this.cookies.delete('ticket-id');
-          this.cookies.set('ticket-id',id.ID.toString())
+          await this.cookies.set('ticket-id',id.ID.toString())
         });
       this.resetTicket();
       setTimeout(()=>{this.router.navigate(['/draw'])},100);
