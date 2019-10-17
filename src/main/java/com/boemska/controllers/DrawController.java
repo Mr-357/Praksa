@@ -8,7 +8,6 @@ import org.paukov.combinatorics3.Generator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -33,7 +32,7 @@ public class DrawController {
     Map<FourCombo, ArrayList<Ticket>> fourComboTicketMap = new HashMap<>();
     Map<FiveCombo, ArrayList<Ticket>> fiveComboTicketMap = new HashMap<>();
     Map<SixCombo, ArrayList<Ticket>> sixComboTicketMap = new HashMap<>();
-    private ArrayList<Ticket> tickets = new ArrayList<>();
+    private ArrayList<Ticket> tickets = new ArrayList<>(); //change to @Bean??
     private void loadAll() {
         tickets = (ArrayList<Ticket>) ticketRepository.findAll();
     }
@@ -44,8 +43,9 @@ public class DrawController {
         }
         return ret;
     }
-//    @CrossOrigin()
-//    @GetMapping("/prepare")
+    @CrossOrigin()
+    @GetMapping("/prepare")
+    //TODO: load on startup, update on ticketadd?
     public void prepare() {
         this.loadAll();
         for (Ticket t : this.tickets) {
@@ -78,15 +78,6 @@ public class DrawController {
             }
 
         }
-//        for(int i=0;i<39;i++){
-//            this.sets.add(new HashSet());
-//        }
-//        for (Ticket t: this.tickets) {
-//            NumberHolder tmp = new NumberHolder(t.getNumbers());
-//            for (int i:tmp.getNumbers()) {
-//                this.sets.get(i-1).add(t);
-//            }
-//        }
     }
 
 
@@ -94,8 +85,11 @@ public class DrawController {
     public void start() throws InterruptedException {
         System.out.println("received message");
         for(int i=0;i<7;i++){
-            this.template.convertAndSend("/draw",this.draw());
-            Thread.sleep(1000);
+            this.draw();
+            StatsHolder tmp = this.getStats();
+            tmp.lastDrawn = NumberGenerator.getInstance().getSingle(i+1);
+            this.template.convertAndSend("/draw",tmp);
+            Thread.sleep(2000);
         }
     }
     @CrossOrigin
@@ -109,8 +103,9 @@ public class DrawController {
     }
     //TODO: optimizacija: ucitavanje tiketa koji imaju svoj hash preko baze, ne cuvati sve u memoriji
     private List<Ticket> hashFind(@RequestParam int n) {
-        NumberHolder win = NumberGenerator.getInstance().getInProgress();  //change to get inprogress
-        HashSet<Ticket> ret = new HashSet<>(); //remove ?
+        NumberHolder win = NumberGenerator.getInstance().getInProgress();
+        HashSet<Ticket> ret = new HashSet<>();
+        ArrayList<Ticket> fin = new ArrayList<>();
         Consumer<List<Integer>> find = o -> {
             switch (o.size()) {
                 case 3:
@@ -133,9 +128,14 @@ public class DrawController {
                     break;
             }
         };
+        int k= win.getNumbers().size();
+        if(n>k) {
+            fin.addAll(ret);
+            return fin;
+        }
         Generator.combination(win.getNumbers()).simple(n).stream().forEach(find);  // ovo n menjamo sa inprogress.size ili da ovo nekako zamenimo resenjem iz find?
         System.out.println(ret.size());
-        ArrayList<Ticket> fin = new ArrayList<>();
+
         fin.addAll(ret);
         return fin;
     }
@@ -182,17 +182,17 @@ public class DrawController {
         ret.fours = this.hashFind(4).size();
         ret.fives = this.hashFind(5).size();
         ret.sixes = this.hashFind(6).size();
-        ret.sevens = this.ticketRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).size();
+        //ret.sevens = this.ticketRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).size();
 
         long end = System.currentTimeMillis();
         System.out.println("vreme pretrage:" + (end - start));
-        Winner upd = winnerRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).get(0);
-        upd.setThrees(ret.threes); //pametniji nacin???
-        upd.setFours(ret.fours);
-        upd.setFives(ret.fives);
-        upd.setSixes(ret.sixes);
-        upd.setSevens(ret.sevens);
-        winnerRepository.save(upd);
+      //  Winner upd = winnerRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).get(0);
+        //upd.setThrees(ret.threes); //pametniji nacin???
+        //upd.setFours(ret.fours);
+       // upd.setFives(ret.fives);
+       // upd.setSixes(ret.sixes);
+        //upd.setSevens(ret.sevens);
+       // winnerRepository.save(upd);
         return ret;
     }
 }

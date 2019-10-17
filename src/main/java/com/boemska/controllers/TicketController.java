@@ -88,12 +88,6 @@ public class TicketController {
         return NumberGenerator.getInstance().getSingle(number);
     }
 
-    @CrossOrigin()
-    @GetMapping("/winningTicket")
-    public ArrayList<Integer> getWinningSet() {
-        return NumberGenerator.getInstance().generateWinner();
-    }
-
     @CrossOrigin
     @GetMapping("/register/random") // tickets.add
     public void generateTickets(@RequestParam int n) {

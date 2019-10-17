@@ -48,12 +48,16 @@ export class TicketDrawComponent implements OnInit {
   //#endregion
   @ViewChild('ticket',{static:false}) ticket:TicketComponent;
   last:number;
+  threes;fours;fives;sixes;sevens;
   winningCombo=[];
   latestTicket;
+  ready=false;
   constructor(private ticketService:TicketsService,private cookies:CookieService) { this.winningCombo=[]; }
 
   async ngOnInit() {
+    this.ready=false;
     this.ticketService.reset().subscribe();
+    this.ticketService.init().subscribe(complete => this.ready=true);
     console.log(this.cookies.get('ticket-id'));
     if(this.checkTicket()==true)
     {
@@ -74,11 +78,17 @@ export class TicketDrawComponent implements OnInit {
     console.log(this.cookies.get('ticket-id').length==0);
     return this.cookies.get('ticket-id').length==0;
   }
-  populate(last:number){   //change to stats
-    this.last=last;
-    this.winningCombo.push(last);
+  populate(response){   //change to stats
+    console.log(response);
+    this.last=response.lastDrawn;
+    this.threes=response.threes;
+    this.fours=response.fours;
+    this.fives=response.fives;
+    this.sixes=response.sixes;
+    this.sevens=response.sevens;
+    this.winningCombo.push(this.last);
     this.winningCombo.sort((a,b)=>a-b);
-    let field = this.ticketService.fields.find(x=>x.value==last);
+    let field = this.ticketService.fields.find(x=>x.value==this.last);
     if (field.marked==true){
       console.log("hit");
       field.hit=true;

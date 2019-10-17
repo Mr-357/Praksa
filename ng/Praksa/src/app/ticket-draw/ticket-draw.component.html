@@ -1,7 +1,25 @@
-<div class="container" style="width: 50%;text-align: center;">
+<div class="container" style="width: 50%;text-align: center;align-items: center">
     <app-ticket #ticket *ngIf="latestTicket"[ticket]='latestTicket'></app-ticket>
+    <div *ngIf="!ready; else elseTemplate" class='spinner'>
+        
+    </div>
+    <ng-template #elseTemplate>
     <div>Last drawn number: {{last}}</div>
     <div>Winning combination: {{winningCombo.toString()}}</div>
+    <p>Number of: 
+        <br>
+        Threes:{{threes}}
+        <br>
+        Fours:{{fours}}
+        <br>
+        Fives:{{fives}}
+        <br>
+        Sixes:{{sixes}}
+        <br>
+        Sevens:{{sevens}}
+        <br>
+    </p>
     <!-- <button (click)="draw()">Draw!</button> -->
     <button (click)="test()">Test!</button>
+    </ng-template>
 </div>
