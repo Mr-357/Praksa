@@ -82,6 +82,11 @@ public class NumberGenerator {
         }
         return ret;
     }
+    public NumberHolder getInProgress(){
+        if(winner.size()==0)
+            throw new BadRequestException("Drawing hasn't started yet!");
+        return new NumberHolder(winner);
+    }
     public NumberHolder getWinningCombination(){
         if(winner.size()<7){
             throw new BadRequestException("Drawing hasn't finished yet!");

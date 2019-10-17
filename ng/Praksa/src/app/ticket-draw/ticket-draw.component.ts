@@ -4,6 +4,11 @@ import { CookieService } from 'ngx-cookie-service';
 import { Ticket } from '../ticket';
 import { TicketComponent } from '../ticket/ticket.component';
 
+
+import * as Stomp from 'stompjs';
+import * as SockJS from 'sockjs-client';
+
+
 @Component({
   selector: 'app-ticket-draw',
   templateUrl: './ticket-draw.component.html',
@@ -11,11 +16,31 @@ import { TicketComponent } from '../ticket/ticket.component';
 })
 export class TicketDrawComponent implements OnInit {
 
+  //#region WebSocket
+  private stompClient;
+  test(){
+   
+    this.stompClient.send("/app/draw/start",{});
+    
+  }
+  initSocket(){
+    let websocket = new SockJS("http://localhost:8080/socket");
+    this.stompClient = Stomp.over(websocket);
+    let that = this; // 
+    this.stompClient.connect({}, function(frame) {
+      that.stompClient.subscribe("/draw", (message) =>{
+        if(message.body)
+          console.log(message.body);
+          that.populate(message.body);
+      });
+    });
+  }
+  //#endregion
   @ViewChild('ticket',{static:false}) ticket:TicketComponent;
   last:number;
   winningCombo=[];
   latestTicket;
-  constructor(private ticketService:TicketsService,private cookies:CookieService) { this.winningCombo=[];}
+  constructor(private ticketService:TicketsService,private cookies:CookieService) { this.winningCombo=[];  this.initSocket();}
 
   async ngOnInit() {
     this.ticketService.reset().subscribe();
