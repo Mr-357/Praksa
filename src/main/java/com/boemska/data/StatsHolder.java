@@ -9,4 +9,5 @@ public class StatsHolder {
     public int sevens;
     public int mostPicked;
     public int luckiest;
+    public int lastDrawn;
 }

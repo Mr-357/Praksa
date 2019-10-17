@@ -1,0 +1,73 @@
+//    @CrossOrigin()
+//    @GetMapping("/list") // double for loop, default collections, doesn't work "realtime"
+    public List<Ticket> find(@RequestParam int n) { //rename to find-n, possibly remove
+        Winner latest = winnerRepository.getOne((int) winnerRepository.count());
+        if (hits.size() == 5) {
+            System.out.println("\n\n\n" + hits.get(n - 3).size() + "\n\n\n" + latest.getNumbers() + "\n\n\n");
+            return hits.get(n - 3);
+        }
+        if (n == 3) {
+            hits.add(tickets
+                    .parallelStream()
+                    .filter(x -> CombinationFinder.has(x, new NumberHolder(latest.getNumbers()), n))
+                    .collect(Collectors.toList()));
+        } else {
+            hits.add(hits.get(n - 4).parallelStream()
+                    .filter(x -> CombinationFinder.has(x, new NumberHolder(latest.getNumbers()), n))
+                    .collect(Collectors.toList()));
+            hits.get(n - 4).removeAll(hits.get(n - 3));
+        }
+
+        System.out.println("\n\n\n" + hits.get(n - 3).size() + "\n\n\n" + latest.getNumbers() + "\n\n\n");
+        return hits.get(n - 3);
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+//    @CrossOrigin()
+//    @GetMapping("/listSet") // hash sets implementation of find(), slightly faster
+    public List<Ticket> findSet(@RequestParam int n) {
+        this.loadLatestWinner();
+        if (hits.size() == 5) // if 3,4,5,6,7 sets are found just return what is needed;
+        {
+            System.out.println("\n\n\n" + hits.get(n - 3).size() + "\n\n\n" + latest + "\n\n\n");
+            return hits.get(n - 3);
+        }
+        if (n == 3) {
+            hits.add(tickets
+                    .parallelStream()
+                    .filter(x -> CombinationFinder.hasSet(x, latest, n))
+                    .collect(Collectors.toList()));
+        } else {
+            hits.add(hits.get(n - 4)
+                    .parallelStream()
+                    .filter(x -> CombinationFinder.hasSet(x, latest, n))
+                    .collect(Collectors.toList()));
+            hits.get(n - 4).removeAll(hits.get(n - 3));
+        }
+
+        System.out.println("\n\n\n" + hits.get(n - 3).size() + "\n\n\n" + latest + "\n\n\n");
+        return hits.get(n - 3);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////
+//    @CrossOrigin()
+//    @GetMapping("/intersect") //a different approach to find(), can work "realtime" but is slower
+    private List<Ticket> intersect(@RequestParam int n) { //remove parameter , lokalna funkcija pozvana iz draw? , dodaj load on demand iz baze? npr samo jedinice itd itd
+        NumberHolder win = NumberGenerator.getInstance().getWinningCombination();  //change to get inprogress
+        ArrayList<Ticket> ret = new ArrayList<>(); //remove ?
+        Consumer<List<Integer>> find = o -> {
+            //if(!checked.exists(o)     alternativno posto je o lista
+            //checked.add(o)            razlika o i checked liste?
+            //else                      checked3,checked4 itd?
+            //return?
+            HashSet first = new HashSet(this.sets.get(o.get(0) - 1));
+            for (int i = 1; i < o.size(); i++) {
+                first.retainAll(this.sets.get(o.get(i) - 1));
+            }
+            ret.addAll(first);
+        };
+        Generator.combination(win.getNumbers()).simple(n).stream().forEach(find);  // ovo n menjamo sa inprogress.size ili da ovo nekako zamenimo resenjem iz find?
+        System.out.println(ret.size());
+        return ret;
+    }
+ 

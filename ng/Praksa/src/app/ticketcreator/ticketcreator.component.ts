@@ -47,7 +47,7 @@ export class TicketcreatorComponent implements OnInit {
           await this.cookies.set('ticket-id',id.ID.toString())
         });
       this.resetTicket();
-      setTimeout(()=>{this.router.navigate(['/draw'])},100);
+      setTimeout(()=>{this.router.navigate(['/draw'])},150);
     }
     else{
       this.ticketService.showModal("You have not picked all 7 numbers","Invalid ticket");

@@ -3,10 +3,10 @@ import { TicketsService } from '../tickets.service';
 import { CookieService } from 'ngx-cookie-service';
 import { Ticket } from '../ticket';
 import { TicketComponent } from '../ticket/ticket.component';
-
-
-import * as Stomp from 'stompjs';
+import * as Stomp from 'webstomp-client';
 import * as SockJS from 'sockjs-client';
+import { Observable } from 'rxjs';
+
 
 
 @Component({
@@ -16,31 +16,41 @@ import * as SockJS from 'sockjs-client';
 })
 export class TicketDrawComponent implements OnInit {
 
-  //#region WebSocket
+  //#region WebSocket service?
+  serverURL = "http://localhost:8080/socket";
+  ws;
   private stompClient;
-  test(){
-   
-    this.stompClient.send("/app/draw/start",{});
-    
-  }
-  initSocket(){
-    let websocket = new SockJS("http://localhost:8080/socket");
-    this.stompClient = Stomp.over(websocket);
-    let that = this; // 
-    this.stompClient.connect({}, function(frame) {
-      that.stompClient.subscribe("/draw", (message) =>{
-        if(message.body)
-          console.log(message.body);
-          that.populate(message.body);
-      });
+  connect():Promise<any>{ //change to promise/observable
+    return new Promise( (resolve,reject) => {
+      this.ws = new SockJS(this.serverURL);
+      this.stompClient = Stomp.over(this.ws);
+      this.stompClient.connect({}, 
+        (result) => resolve(result),
+        (error) => reject(error)
+        )
     });
+  }
+  subscribeSocket():Observable<any>{
+    return new Observable(observer => {
+      this.stompClient.subscribe("/draw", (message)=>{
+      observer.next(JSON.parse(message.body));
+    })
+  })
+  }
+  sendEmptyMessage(){
+    this.stompClient.send("/app/draw/start",{});
+  }
+  disconnect(){
+    if(this.ws!=null)
+    this.ws.close();
+    console.log("Disconnected");
   }
   //#endregion
   @ViewChild('ticket',{static:false}) ticket:TicketComponent;
   last:number;
   winningCombo=[];
   latestTicket;
-  constructor(private ticketService:TicketsService,private cookies:CookieService) { this.winningCombo=[];  this.initSocket();}
+  constructor(private ticketService:TicketsService,private cookies:CookieService) { this.winningCombo=[]; }
 
   async ngOnInit() {
     this.ticketService.reset().subscribe();
@@ -52,13 +62,19 @@ export class TicketDrawComponent implements OnInit {
     else{
       await this.ticketService.getTicket(this.cookies.get('ticket-id')).toPromise().then(ticket=>this.latestTicket=ticket);
     }
-
+    this.connect().then((result)=>{
+      console.log("Connected");
+      this.subscribeSocket().subscribe((message)=>this.populate(message));
+    }).catch((error)=>console.log(error));
+  }
+  test(){
+    this.sendEmptyMessage();
   }
   checkTicket(){
     console.log(this.cookies.get('ticket-id').length==0);
     return this.cookies.get('ticket-id').length==0;
   }
-  populate(last:number){
+  populate(last:number){   //change to stats
     this.last=last;
     this.winningCombo.push(last);
     this.winningCombo.sort((a,b)=>a-b);
