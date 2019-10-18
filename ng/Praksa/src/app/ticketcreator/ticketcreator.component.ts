@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChildren, QueryList, ElementRef } from '@angular/core';
 import { Ticket, NumberHolder } from '../ticket'
 import { TicketsService } from '../tickets.service';
-import {CookieService} from 'ngx-cookie-service'
+import { CookieService } from 'ngx-cookie-service'
 import { Router } from '@angular/router';
 @Component({
   selector: 'app-ticketcreator',
@@ -9,48 +9,42 @@ import { Router } from '@angular/router';
   styleUrls: ['./ticketcreator.component.css']
 })
 export class TicketcreatorComponent implements OnInit {
-
-  constructor(private ticketService:TicketsService,private cookies:CookieService,private router:Router) { 
-   
-  }
-
   num;
 
-  ngOnInit() {
-    
-   this.ticketService.markedNum$.subscribe(x=>this.num=x);
-   
+  constructor(private ticketService: TicketsService, private cookies: CookieService, private router: Router) {
   }
 
-  refresh(){
+  ngOnInit() {
+    this.ticketService.markedNum$.subscribe(x => this.num = x);
+  }
+
+  refresh() {
     window.location.reload();
   }
 
 
-  resetTicket(){
+  resetTicket() {
     this.ticketService.clear();
   }
 
-  randomTicket(){
+  randomTicket() {
     this.ticketService.generateRandom();
   }
 
   async registerTicket() {
     let numbers = new NumberHolder;
-    numbers.numbers=this.ticketService.getNumbers();
-    if(numbers.numbers.length==7)
-    {
-     
-      await this.ticketService.createTicket(numbers).subscribe(async id=>
-        {
-          this.cookies.delete('ticket-id');
-          await this.cookies.set('ticket-id',id.ID.toString())
-        });
+    numbers.numbers = this.ticketService.getNumbers();
+    if (numbers.numbers.length == 7) {
+
+      await this.ticketService.createTicket(numbers).subscribe(async id => {
+        this.cookies.delete('ticket-id');
+        await this.cookies.set('ticket-id', id.ID.toString())
+      });
       this.resetTicket();
-      setTimeout(()=>{this.router.navigate(['/draw'])},150);
+      setTimeout(() => { this.router.navigate(['/draw']) }, 150);
     }
-    else{
-      this.ticketService.showModal("You have not picked all 7 numbers","Invalid ticket");
+    else {
+      this.ticketService.showModal("You have not picked all 7 numbers", "Invalid ticket");
     }
   }
 }

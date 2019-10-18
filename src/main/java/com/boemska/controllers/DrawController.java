@@ -24,18 +24,22 @@ public class DrawController {
     @Autowired
     private TicketRepository ticketRepository;
     private final SimpMessagingTemplate template;
+
     @Autowired
-    DrawController(SimpMessagingTemplate template){
-        this.template=template;
+    DrawController(SimpMessagingTemplate template) {
+        this.template = template;
     }
-    Map<ThreeCombo, ArrayList<Ticket>> threeComboTicketMap = new HashMap<>();
-    Map<FourCombo, ArrayList<Ticket>> fourComboTicketMap = new HashMap<>();
-    Map<FiveCombo, ArrayList<Ticket>> fiveComboTicketMap = new HashMap<>();
-    Map<SixCombo, ArrayList<Ticket>> sixComboTicketMap = new HashMap<>();
+
+    private Map<ThreeCombo, ArrayList<Ticket>> threeComboTicketMap = new HashMap<>();
+    private Map<FourCombo, ArrayList<Ticket>> fourComboTicketMap = new HashMap<>();
+    private Map<FiveCombo, ArrayList<Ticket>> fiveComboTicketMap = new HashMap<>();
+    private Map<SixCombo, ArrayList<Ticket>> sixComboTicketMap = new HashMap<>();
     private ArrayList<Ticket> tickets = new ArrayList<>(); //change to @Bean??
+
     private void loadAll() {
         tickets = (ArrayList<Ticket>) ticketRepository.findAll();
     }
+
     public int draw() {
         int ret = NumberGenerator.getInstance().generateSingle();
         if (NumberGenerator.getInstance().isCompleted()) {
@@ -43,10 +47,13 @@ public class DrawController {
         }
         return ret;
     }
+
     @CrossOrigin()
     @GetMapping("/prepare")
     //TODO: load on startup, update on ticketadd?
     public void prepare() {
+        if (this.threeComboTicketMap.size() != 0) // temporary workaround
+            return;
         this.loadAll();
         for (Ticket t : this.tickets) {
             for (int i = 3; i <= 6; i++) {
@@ -57,15 +64,15 @@ public class DrawController {
                             tickets.add(t);
                             break;
                         case 4:
-                            fourComboTicketMap.computeIfAbsent(new FourCombo(x), y -> new ArrayList<Ticket>());
+                            fourComboTicketMap.computeIfAbsent(new FourCombo(x), y -> new ArrayList<>());
                             fourComboTicketMap.get(new FourCombo(x)).add(t);
                             break;
                         case 5:
-                            fiveComboTicketMap.computeIfAbsent(new FiveCombo(x), y -> new ArrayList<Ticket>());
+                            fiveComboTicketMap.computeIfAbsent(new FiveCombo(x), y -> new ArrayList<>());
                             fiveComboTicketMap.get(new FiveCombo(x)).add(t);
                             break;
                         case 6:
-                            sixComboTicketMap.computeIfAbsent(new SixCombo(x), y -> new ArrayList<Ticket>());
+                            sixComboTicketMap.computeIfAbsent(new SixCombo(x), y -> new ArrayList<>());
                             sixComboTicketMap.get(new SixCombo(x)).add(t);
                             break;
                         case 7:
@@ -84,23 +91,23 @@ public class DrawController {
     @MessageMapping("/draw/start")
     public void start() throws InterruptedException {
         System.out.println("received message");
-        for(int i=0;i<7;i++){
-            this.draw();
-            StatsHolder tmp = this.getStats();
-            tmp.lastDrawn = NumberGenerator.getInstance().getSingle(i+1);
-            this.template.convertAndSend("/draw",tmp);
+        for (int i = 0; i < 7; i++) {
+            StatsHolder tmp = this.getStats(this.draw());
+            this.template.convertAndSend("/draw", tmp);
             Thread.sleep(2000);
         }
     }
+
     @CrossOrigin
     @GetMapping("/reset")
     public void reset() {
         NumberGenerator.getInstance().reset();
-        threeComboTicketMap = new HashMap<>();
-        fourComboTicketMap = new HashMap<>();
-        fiveComboTicketMap = new HashMap<>();
-        sixComboTicketMap = new HashMap<>();
+//        threeComboTicketMap = new HashMap<>();
+//        fourComboTicketMap = new HashMap<>();
+//        fiveComboTicketMap = new HashMap<>();
+//        sixComboTicketMap = new HashMap<>();
     }
+
     //TODO: optimizacija: ucitavanje tiketa koji imaju svoj hash preko baze, ne cuvati sve u memoriji
     private List<Ticket> hashFind(@RequestParam int n) {
         NumberHolder win = NumberGenerator.getInstance().getInProgress();
@@ -123,13 +130,13 @@ public class DrawController {
                 case 6:
                     if (sixComboTicketMap.containsKey(new SixCombo(o)))
                         ret.addAll(sixComboTicketMap.get(new SixCombo(o)));
-                    break;   // null pointer
+                    break;
                 default:
                     break;
             }
         };
-        int k= win.getNumbers().size();
-        if(n>k) {
+        int k = win.getNumbers().size();
+        if (n > k) {
             fin.addAll(ret);
             return fin;
         }
@@ -139,10 +146,11 @@ public class DrawController {
         fin.addAll(ret);
         return fin;
     }
-//    @CrossOrigin
-//    @GetMapping("/stats") // TODO: tidy up
-    public StatsHolder getStats() {
+
+    // TODO: tidy up
+    public StatsHolder getStats(int last) {
         StatsHolder ret = new StatsHolder();
+        ret.lastDrawn = last;
         ret.total = (int) ticketRepository.count();
         int[] luckiest = new int[39];
         int[] mostpicked = new int[39];
@@ -182,17 +190,18 @@ public class DrawController {
         ret.fours = this.hashFind(4).size();
         ret.fives = this.hashFind(5).size();
         ret.sixes = this.hashFind(6).size();
-        //ret.sevens = this.ticketRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).size();
-
+        if (NumberGenerator.getInstance().isCompleted()) {
+            ret.sevens = this.ticketRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).size();
+            Winner upd = winnerRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).get(0);
+            upd.setThrees(ret.threes); //pametniji nacin???
+            upd.setFours(ret.fours);
+            upd.setFives(ret.fives);
+            upd.setSixes(ret.sixes);
+            upd.setSevens(ret.sevens);
+            winnerRepository.save(upd);
+        }
         long end = System.currentTimeMillis();
-        System.out.println("vreme pretrage:" + (end - start));
-      //  Winner upd = winnerRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).get(0);
-        //upd.setThrees(ret.threes); //pametniji nacin???
-        //upd.setFours(ret.fours);
-       // upd.setFives(ret.fives);
-       // upd.setSixes(ret.sixes);
-        //upd.setSevens(ret.sevens);
-       // winnerRepository.save(upd);
+        System.out.println("vreme pretrage:" + (end - start) + NumberGenerator.getInstance().getInProgress().getNumbers());
         return ret;
     }
 }

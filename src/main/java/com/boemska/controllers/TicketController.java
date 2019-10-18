@@ -5,9 +5,11 @@ import com.boemska.helpers.CombinationFinder;
 import com.boemska.repos.WinnerRepository;
 import org.paukov.combinatorics3.Generator;
 import org.springframework.data.domain.Pageable;
+
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
 import com.boemska.exceptions.BadRequestException;
 import com.boemska.exceptions.NotFoundException;
 import com.boemska.helpers.NumberGenerator;
@@ -20,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class TicketController {
-
 
     private List<Integer> checker = new ArrayList<Integer>(); //helper structure for validating tickets
     @Autowired
@@ -100,13 +101,4 @@ public class TicketController {
         ticketRepository.saveAll(tosave);
 
     }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
 }
