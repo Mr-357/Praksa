@@ -14,7 +14,8 @@ import { TicketComponent } from './ticket/ticket.component';
 import { Routes, RouterModule } from '@angular/router';
 import { ErrorComponentComponent } from './error-component/error-component.component'
 import { CookieService } from 'ngx-cookie-service';
-
+import { LottoBallComponent } from './lotto-ball/lotto-ball.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 const appRoutes:Routes = [
   {path: '',component: TicketsComponent},
   {path: 'pick',component: TicketcreatorComponent},       //child components
@@ -32,7 +33,8 @@ const appRoutes:Routes = [
     TicketDrawComponent,
     ModalComponent,
     TicketComponent,
-    ErrorComponentComponent
+    ErrorComponentComponent,
+    LottoBallComponent
   ],
   imports: [
     BrowserModule,
@@ -40,7 +42,8 @@ const appRoutes:Routes = [
     TooltipModule.forRoot(),
     ModalModule.forRoot(),
     HttpClientModule,
-    RouterModule.forRoot(appRoutes)
+    RouterModule.forRoot(appRoutes),
+    BrowserAnimationsModule 
   ],
   providers: [BsModalRef,CookieService],
   bootstrap: [AppComponent],

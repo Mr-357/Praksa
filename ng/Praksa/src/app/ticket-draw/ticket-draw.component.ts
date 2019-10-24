@@ -6,6 +6,7 @@ import { TicketComponent } from '../ticket/ticket.component';
 import * as Stomp from 'webstomp-client';
 import * as SockJS from 'sockjs-client';
 import { Observable } from 'rxjs';
+import { isArray } from 'util';
 
 
 
@@ -30,7 +31,14 @@ export class TicketDrawComponent implements OnInit {
       )
     });
   }
-  subscribeSocket(): Observable<any> {
+  subscribeTopic(): Observable<any> {
+    return new Observable(observer => {
+      this.stompClient.subscribe("/app/draw", (message) => {
+        observer.next(JSON.parse(message.body));
+      })
+    })
+  }
+  subscribeNumbers(): Observable<any> {
     return new Observable(observer => {
       this.stompClient.subscribe("/draw", (message) => {
         observer.next(JSON.parse(message.body));
@@ -53,11 +61,20 @@ export class TicketDrawComponent implements OnInit {
   winningCombo = [];
   latestTicket;
   ready = false;
-  constructor(private ticketService: TicketsService, private cookies: CookieService) { this.winningCombo = []; }
+  balls=[];
+  constructor(private ticketService: TicketsService, private cookies: CookieService) { 
+    this.winningCombo = []; 
+    for(let i=1;i<=39;i++){
+      if(i<10)
+      this.balls.push('0'+i);
+      else
+      this.balls.push(i);
+    }
+  }
 
   async ngOnInit() {
     this.ready = false;
-    this.ticketService.reset().subscribe();
+    //this.ticketService.reset().subscribe();
     this.ticketService.init().subscribe(complete => this.ready = true);
     console.log(this.cookies.get('ticket-id'));
     if (this.checkTicket() == true) {
@@ -68,7 +85,8 @@ export class TicketDrawComponent implements OnInit {
     }
     this.connect().then((result) => {
       console.log("Connected");
-      this.subscribeSocket().subscribe((message) => this.populate(message));
+      this.subscribeTopic().subscribe((message) => this.populate(message));
+      this.subscribeNumbers().subscribe((message) => this.populate(message));
     }).catch((error) => console.log(error));
   }
 
@@ -81,26 +99,33 @@ export class TicketDrawComponent implements OnInit {
     return this.cookies.get('ticket-id').length == 0;
   }
 
-  populate(response) {   //change to stats
+  populate(response) {   //change to stats model?
     console.log(response);
-    this.last = response.lastDrawn;
-    this.threes = response.threes;
-    this.fours = response.fours;
-    this.fives = response.fives;
-    this.sixes = response.sixes;
-    this.sevens = response.sevens;
-    this.winningCombo.push(response.lastDrawn);
-    this.winningCombo.sort((a, b) => a - b);
-    let field = this.ticketService.fields.find(x => x.value == this.last);
-    if (field.marked == true) {
-      console.log("hit");
-      field.hit = true;
+    if(isArray(response))
+    {
+      response.forEach(x=>this.populate(x));
     }
-    else {
-      field.miss = true;
-      console.log("miss");
+    else{
+      this.last = response.lastDrawn;
+      this.threes = response.threes;
+      this.fours = response.fours;
+      this.fives = response.fives;
+      this.sixes = response.sixes;
+      this.sevens = response.sevens;
+      this.winningCombo.push(response.lastDrawn);
+      this.winningCombo.sort((a, b) => a - b);
+      let field = this.ticketService.fields.find(x => x.value == this.last);
+      if (field.marked == true) {
+        console.log("hit");
+        field.hit = true;
+      }
+      else {
+        field.miss = true;
+        console.log("miss");
+      }
+  
     }
-
+    
   }
 
   draw() {

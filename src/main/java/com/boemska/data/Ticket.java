@@ -5,7 +5,12 @@ import org.hibernate.annotations.GenericGenerator;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Objects;
+
+import static java.util.stream.Collectors.toList;
 
 @Entity
 @Table(name="tickets")
@@ -62,5 +67,16 @@ public class Ticket {
     @Override
     public int hashCode() {
         return Objects.hash(id);
+    }
+
+    public ArrayList<Integer> getNumberList(){
+        ArrayList tmp = (ArrayList<Integer>) Arrays.asList(numbers.split(","))
+                .stream()
+                .map(String::trim)
+                .mapToInt(Integer::parseInt)
+                .boxed()
+                .collect(toList());
+        Collections.sort(tmp);
+        return tmp;
     }
 }

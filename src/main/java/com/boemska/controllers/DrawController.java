@@ -8,6 +8,7 @@ import org.paukov.combinatorics3.Generator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.annotation.SubscribeMapping;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -16,7 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
-
+//postoji mogucnost da ovo ne radi kako treba za mnogo klijenata zbog multithreadinga pri ovim zahtevima, mozda je potrebno napraviti @Bean-ove za tickets,stats,started
+//i proveriti da li ovaj websocket salje svima nezavisno od toga koji je kontroler pozvan
 @RestController
 public class DrawController {
     @Autowired
@@ -24,20 +26,17 @@ public class DrawController {
     @Autowired
     private TicketRepository ticketRepository;
     private final SimpMessagingTemplate template;
-
+    @Autowired
+    private TicketsBean tickets;
     @Autowired
     DrawController(SimpMessagingTemplate template) {
         this.template = template;
     }
+    //jedna ready varijabla? kad se zavrsi prepare
 
-    private Map<ThreeCombo, ArrayList<Ticket>> threeComboTicketMap = new HashMap<>();
-    private Map<FourCombo, ArrayList<Ticket>> fourComboTicketMap = new HashMap<>();
-    private Map<FiveCombo, ArrayList<Ticket>> fiveComboTicketMap = new HashMap<>();
-    private Map<SixCombo, ArrayList<Ticket>> sixComboTicketMap = new HashMap<>();
-    private ArrayList<Ticket> tickets = new ArrayList<>(); //change to @Bean??
-
+    private ArrayList<StatsHolder> stats = new ArrayList<>();
     private void loadAll() {
-        tickets = (ArrayList<Ticket>) ticketRepository.findAll();
+        tickets.setTickets((ArrayList<Ticket>) ticketRepository.findAll());
     }
 
     public int draw() {
@@ -52,28 +51,29 @@ public class DrawController {
     @GetMapping("/prepare")
     //TODO: load on startup, update on ticketadd?
     public void prepare() {
-        if (this.threeComboTicketMap.size() != 0) // temporary workaround
+        if (tickets.getThreeComboTicketMap().size() != 0) // temporary workaround
             return;
         this.loadAll();
-        for (Ticket t : this.tickets) {
-            for (int i = 3; i <= 6; i++) {
-                Consumer<List<Integer>> save = x -> {
-                    switch (x.size()) {
+        for (Ticket ticket : this.tickets.getTickets()) {
+            for (int comboLength = 3; comboLength <= 6; comboLength++) {
+                Consumer<List<Integer>> save = combination -> {
+                    ArrayList<Ticket> temporaryMap;
+                    switch (combination.size()) {
                         case 3:
-                            ArrayList<Ticket> tickets = threeComboTicketMap.computeIfAbsent(new ThreeCombo(x), y -> new ArrayList<>());
-                            tickets.add(t);
+                            temporaryMap = this.tickets.getThreeComboTicketMap().computeIfAbsent(new ThreeCombo(combination), element -> new ArrayList<>());
+                            temporaryMap.add(ticket);
                             break;
                         case 4:
-                            fourComboTicketMap.computeIfAbsent(new FourCombo(x), y -> new ArrayList<>());
-                            fourComboTicketMap.get(new FourCombo(x)).add(t);
+                            temporaryMap=this.tickets.getFourComboTicketMap().computeIfAbsent(new FourCombo(combination), element -> new ArrayList<>());
+                            temporaryMap.add(ticket);
                             break;
                         case 5:
-                            fiveComboTicketMap.computeIfAbsent(new FiveCombo(x), y -> new ArrayList<>());
-                            fiveComboTicketMap.get(new FiveCombo(x)).add(t);
+                            temporaryMap=this.tickets.getFiveComboTicketMap().computeIfAbsent(new FiveCombo(combination), element -> new ArrayList<>());
+                            temporaryMap.add(ticket);
                             break;
                         case 6:
-                            sixComboTicketMap.computeIfAbsent(new SixCombo(x), y -> new ArrayList<>());
-                            sixComboTicketMap.get(new SixCombo(x)).add(t);
+                            temporaryMap=this.tickets.getSixComboTicketMap().computeIfAbsent(new SixCombo(combination), element -> new ArrayList<>());
+                            temporaryMap.add(ticket);
                             break;
                         case 7:
                             break;
@@ -81,7 +81,7 @@ public class DrawController {
                             throw new RuntimeException("bad combination");
                     }
                 };
-                Generator.combination(new NumberHolder(t.getNumbers()).getNumbers()).simple(i).forEach(save);
+                Generator.combination(ticket.getNumberList()).simple(comboLength).forEach(save);
             }
 
         }
@@ -93,65 +93,66 @@ public class DrawController {
         System.out.println("received message");
         for (int i = 0; i < 7; i++) {
             StatsHolder tmp = this.getStats(this.draw());
+            this.stats.add(tmp);
             this.template.convertAndSend("/draw", tmp);
             Thread.sleep(2000);
         }
     }
 
+    @SubscribeMapping("/draw")
+    public List<StatsHolder> onSubscribe(){
+        System.out.println("client subscribed");
+        return this.stats;
+    }
     @CrossOrigin
     @GetMapping("/reset")
     public void reset() {
         NumberGenerator.getInstance().reset();
-//        threeComboTicketMap = new HashMap<>();
-//        fourComboTicketMap = new HashMap<>();
-//        fiveComboTicketMap = new HashMap<>();
-//        sixComboTicketMap = new HashMap<>();
+        stats.clear();
     }
 
-    //TODO: optimizacija: ucitavanje tiketa koji imaju svoj hash preko baze, ne cuvati sve u memoriji
-    private List<Ticket> hashFind(@RequestParam int n) {
-        NumberHolder win = NumberGenerator.getInstance().getInProgress();
-        HashSet<Ticket> ret = new HashSet<>();
-        ArrayList<Ticket> fin = new ArrayList<>();
-        Consumer<List<Integer>> find = o -> {
-            switch (o.size()) {
+    private List<Ticket> hashFind(@RequestParam int comboLength) {
+        NumberHolder drawnNumbers = NumberGenerator.getInstance().getInProgress();
+        HashSet<Ticket> currentSearch = new HashSet<>();
+        ArrayList<Ticket> completedSearch = new ArrayList<>();
+        Consumer<List<Integer>> find = combination -> {
+            switch (combination.size()) {
                 case 3:
-                    if (threeComboTicketMap.containsKey(new ThreeCombo(o)))
-                        ret.addAll(threeComboTicketMap.get(new ThreeCombo(o)));
+                    if (this.tickets.getThreeComboTicketMap().containsKey(new ThreeCombo(combination)))
+                        currentSearch.addAll(this.tickets.getThreeComboTicketMap().get(new ThreeCombo(combination)));
                     break;
                 case 4:
-                    if (fourComboTicketMap.containsKey(new FourCombo(o)))
-                        ret.addAll(fourComboTicketMap.get(new FourCombo(o)));
+                    if (this.tickets.getFourComboTicketMap().containsKey(new FourCombo(combination)))
+                        currentSearch.addAll(this.tickets.getFourComboTicketMap().get(new FourCombo(combination)));
                     break;
                 case 5:
-                    if (fiveComboTicketMap.containsKey(new FiveCombo(o)))
-                        ret.addAll(fiveComboTicketMap.get(new FiveCombo(o)));
+                    if (this.tickets.getFiveComboTicketMap().containsKey(new FiveCombo(combination)))
+                        currentSearch.addAll(this.tickets.getFiveComboTicketMap().get(new FiveCombo(combination)));
                     break;
                 case 6:
-                    if (sixComboTicketMap.containsKey(new SixCombo(o)))
-                        ret.addAll(sixComboTicketMap.get(new SixCombo(o)));
+                    if (this.tickets.getSixComboTicketMap().containsKey(new SixCombo(combination)))
+                        currentSearch.addAll(this.tickets.getSixComboTicketMap().get(new SixCombo(combination)));
                     break;
                 default:
                     break;
             }
         };
-        int k = win.getNumbers().size();
-        if (n > k) {
-            fin.addAll(ret);
-            return fin;
+        int currentlyDrawn = drawnNumbers.getNumbers().size();
+        if (comboLength > currentlyDrawn) {
+            return completedSearch;
         }
-        Generator.combination(win.getNumbers()).simple(n).stream().forEach(find);  // ovo n menjamo sa inprogress.size ili da ovo nekako zamenimo resenjem iz find?
-        System.out.println(ret.size());
+        Generator.combination(drawnNumbers.getNumbers()).simple(comboLength).stream().forEach(find);
+        System.out.println(currentSearch.size());
 
-        fin.addAll(ret);
-        return fin;
+        completedSearch.addAll(currentSearch);
+        return completedSearch;
     }
 
     // TODO: tidy up
-    public StatsHolder getStats(int last) {
-        StatsHolder ret = new StatsHolder();
-        ret.lastDrawn = last;
-        ret.total = (int) ticketRepository.count();
+    public StatsHolder getStats(int lastDrawnNumber) {
+        StatsHolder currentStats = new StatsHolder();
+        currentStats.lastDrawn = lastDrawnNumber;
+        currentStats.total = (int) ticketRepository.count();
         int[] luckiest = new int[39];
         int[] mostpicked = new int[39];
         // this.prepare();   //   nije potrebno ako je vec izvlaceno??
@@ -160,15 +161,13 @@ public class DrawController {
             luckiest[i] = 0;
             mostpicked[i] = 0;
         }
-        for (Ticket t : tickets) {
-            NumberHolder tmp = new NumberHolder(t.getNumbers());
-            for (int n : tmp.getNumbers()) {
+        for (Ticket t : tickets.getTickets()) {
+            for (int n : t.getNumberList()) {
                 mostpicked[n - 1]++;
             }
         }
         for (Winner w : winners) {
-            NumberHolder tmp = new NumberHolder(w.getNumbers());
-            for (int n : tmp.getNumbers()) {
+            for (int n : w.getNumberList()) {
                 luckiest[n - 1]++;
             }
         }
@@ -183,25 +182,25 @@ public class DrawController {
                 retpick = i + 1;
             }
         }
-        ret.luckiest = retlucky;
-        ret.mostPicked = retpick;
+        currentStats.luckiest = retlucky;
+        currentStats.mostPicked = retpick;
         long start = System.currentTimeMillis();
-        ret.threes = this.hashFind(3).size();
-        ret.fours = this.hashFind(4).size();
-        ret.fives = this.hashFind(5).size();
-        ret.sixes = this.hashFind(6).size();
+        currentStats.threes = this.hashFind(3).size();
+        currentStats.fours = this.hashFind(4).size();
+        currentStats.fives = this.hashFind(5).size();
+        currentStats.sixes = this.hashFind(6).size();
         if (NumberGenerator.getInstance().isCompleted()) {
-            ret.sevens = this.ticketRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).size();
-            Winner upd = winnerRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).get(0);
-            upd.setThrees(ret.threes); //pametniji nacin???
-            upd.setFours(ret.fours);
-            upd.setFives(ret.fives);
-            upd.setSixes(ret.sixes);
-            upd.setSevens(ret.sevens);
-            winnerRepository.save(upd);
+            currentStats.sevens = this.ticketRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).size();
+            Winner currentCombination = winnerRepository.findByNumbers(NumberGenerator.getInstance().getWinningCombination().getStringNumbers()).get(0);
+            currentCombination.setThrees(currentStats.threes); //pametniji nacin???
+            currentCombination.setFours(currentStats.fours);
+            currentCombination.setFives(currentStats.fives);
+            currentCombination.setSixes(currentStats.sixes);
+            currentCombination.setSevens(currentStats.sevens);
+            winnerRepository.save(currentCombination);
         }
         long end = System.currentTimeMillis();
         System.out.println("vreme pretrage:" + (end - start) + NumberGenerator.getInstance().getInProgress().getNumbers());
-        return ret;
+        return currentStats;
     }
 }

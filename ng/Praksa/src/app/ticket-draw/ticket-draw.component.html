@@ -19,6 +19,12 @@
         Sevens:{{sevens}}
         <br>
     </p>
+    <div class="ball-container"> 
+    <app-lotto-ball *ngFor="let item of balls" [number]=item>
+
+    </app-lotto-ball>
+    </div>
+   
     <!-- <button (click)="draw()">Draw!</button> -->
     <button (click)="test()">Test!</button>
     </ng-template>

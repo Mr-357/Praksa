@@ -1,14 +1,10 @@
 package com.boemska.controllers;
 
 import com.boemska.data.*;
-import com.boemska.helpers.CombinationFinder;
 import com.boemska.repos.WinnerRepository;
-import org.paukov.combinatorics3.Generator;
 import org.springframework.data.domain.Pageable;
 
 import java.util.*;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import com.boemska.exceptions.BadRequestException;
 import com.boemska.exceptions.NotFoundException;
@@ -28,7 +24,8 @@ public class TicketController {
     private TicketRepository ticketRepository;
     @Autowired
     private WinnerRepository winnerRepository;
-
+    @Autowired
+    private TicketsBean tickets;
     private boolean isValid(NumberHolder holder) {
         for (Integer i : holder.getNumbers()) {
             if (i < 0 || i > 39) {
@@ -50,7 +47,7 @@ public class TicketController {
         if (holder.getNumbers().size() == 7 && isValid(holder)) {
             Ticket ticket = new Ticket(holder.getStringNumbers());
             ticketRepository.save(ticket);
-            //tickets.add(ticket);
+            tickets.addTicketWithHash(ticket);
             return new IDHolder(ticket.getId());
         } else {
             throw new BadRequestException("Not a valid ticket!");
@@ -96,7 +93,7 @@ public class TicketController {
         for (int i = 0; i < n; i++) {
             Ticket ticket = new Ticket(NumberGenerator.getInstance().generateRandomTicket().getStringNumbers());
             tosave.add(ticket);
-            //tickets.add(ticket);
+            tickets.addTicketWithHash(ticket);
         }
         ticketRepository.saveAll(tosave);
 

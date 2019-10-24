@@ -2,6 +2,11 @@ package com.boemska.data;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+
+import static java.util.stream.Collectors.toList;
 
 @Entity
 @Table(name="winners")
@@ -47,6 +52,17 @@ public class Winner {
 
     public String getNumbers() {
         return numbers;
+    }
+
+    public ArrayList<Integer> getNumberList(){
+       ArrayList tmp = (ArrayList<Integer>) Arrays.asList(numbers.split(","))
+                .stream()
+                .map(String::trim)
+                .mapToInt(Integer::parseInt)
+                .boxed()
+                .collect(toList());
+        Collections.sort(tmp);
+        return tmp;
     }
 
     public void setNumbers(String numbers) {
