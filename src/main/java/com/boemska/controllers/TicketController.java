@@ -27,22 +27,22 @@ public class TicketController {
     @Autowired
     private TicketsBean tickets;
     private boolean isValid(NumberHolder holder) {
-        for (Integer i : holder.getNumbers()) {
-            if (i < 0 || i > 39) {
+        for (Integer number : holder.getNumbers()) {
+            if (number < 0 || number > 39) {
                 return false;
             }
-            if (checker.contains(i)) {
+            if (checker.contains(number)) {
                 checker.clear();
                 return false;
             }
-            checker.add(i);
+            checker.add(number);
         }
         checker.clear();
         return true;
     }
 
     @CrossOrigin()
-    @RequestMapping(value = "/register", method = RequestMethod.POST) // tickets.add???
+    @RequestMapping(value = "/register", method = RequestMethod.POST)
     public IDHolder register(@RequestBody NumberHolder holder) throws Exception {
         if (holder.getNumbers().size() == 7 && isValid(holder)) {
             Ticket ticket = new Ticket(holder.getStringNumbers());
@@ -57,10 +57,10 @@ public class TicketController {
 
     @CrossOrigin()
     @GetMapping("/tickets")
-    public List<Ticket> page(@RequestParam(required = false) Integer n) {
-        if (n == null || n == 0)
-            n = 1;
-        Pageable page = PageRequest.of(n - 1, 24, Sort.by("created").descending());
+    public List<Ticket> page(@RequestParam(required = false) Integer pageNumber) {
+        if (pageNumber == null || pageNumber == 0)
+            pageNumber = 1;
+        Pageable page = PageRequest.of(pageNumber - 1, 24, Sort.by("created").descending());
 
         return ticketRepository.findAll(page).getContent();
     }
@@ -87,10 +87,10 @@ public class TicketController {
     }
 
     @CrossOrigin
-    @GetMapping("/register/random") // tickets.add
-    public void generateTickets(@RequestParam int n) {
+    @GetMapping("/register/random")
+    public void generateTickets(@RequestParam int ammount) {
         ArrayList<Ticket> tosave = new ArrayList<Ticket>();
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < ammount; i++) {
             Ticket ticket = new Ticket(NumberGenerator.getInstance().generateRandomTicket().getStringNumbers());
             tosave.add(ticket);
             tickets.addTicketWithHash(ticket);

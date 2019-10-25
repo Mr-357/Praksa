@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, ViewChildren, QueryList } from '@angular/core';
 import { TicketsService } from '../tickets.service';
 import { CookieService } from 'ngx-cookie-service';
 import { Ticket } from '../ticket';
@@ -7,6 +7,7 @@ import * as Stomp from 'webstomp-client';
 import * as SockJS from 'sockjs-client';
 import { Observable } from 'rxjs';
 import { isArray } from 'util';
+import { LottoBallComponent } from '../lotto-ball/lotto-ball.component';
 
 
 
@@ -56,19 +57,17 @@ export class TicketDrawComponent implements OnInit {
   //#endregion
   
   @ViewChild('ticket', { static: false }) ticket: TicketComponent;
+  @ViewChildren(LottoBallComponent) balls : QueryList<LottoBallComponent>;
   last: number;
   threes; fours; fives; sixes; sevens;
   winningCombo = [];
   latestTicket;
   ready = false;
-  balls=[];
+  ballnumbers=[];
   constructor(private ticketService: TicketsService, private cookies: CookieService) { 
     this.winningCombo = []; 
     for(let i=1;i<=39;i++){
-      if(i<10)
-      this.balls.push('0'+i);
-      else
-      this.balls.push(i);
+      this.ballnumbers.push(i);
     }
   }
 
@@ -86,12 +85,32 @@ export class TicketDrawComponent implements OnInit {
     this.connect().then((result) => {
       console.log("Connected");
       this.subscribeTopic().subscribe((message) => this.populate(message));
-      this.subscribeNumbers().subscribe((message) => this.populate(message));
+      this.subscribeNumbers().subscribe((message) =>{
+        this.populate(message);
+        this.stop();
+      } );
     }).catch((error) => console.log(error));
+    this.balls.forEach(x=>x.changeState());
   }
 
   test() {
     this.sendEmptyMessage();
+    this.balls.forEach(x=>x.changeState());
+  }
+  stop(){
+    this.balls.forEach(x=>{
+      if(!this.winningCombo.includes(x.number))
+      {
+        setTimeout(()=>x.changeState(),500);
+        setTimeout(()=>x.changeState(),650);
+      }
+
+    });
+  }
+  pull(){
+    let n = Math.floor(Math.random()*38)+1;
+    console.log(n);
+    this.balls.find(x=>x.number==(n)).anim();
   }
 
   checkTicket() {
@@ -115,6 +134,8 @@ export class TicketDrawComponent implements OnInit {
       this.winningCombo.push(response.lastDrawn);
       this.winningCombo.sort((a, b) => a - b);
       let field = this.ticketService.fields.find(x => x.value == this.last);
+      let ball = this.balls.find(x=>x.number == response.lastDrawn);
+      ball.anim();
       if (field.marked == true) {
         console.log("hit");
         field.hit = true;
@@ -127,15 +148,4 @@ export class TicketDrawComponent implements OnInit {
     }
     
   }
-
-  draw() {
-    if (this.checkTicket() == false) {
-      this.ticketService.init().subscribe();
-      for (let i = 0; i < 7; i++) {
-        setTimeout(() => { this.ticketService.drawNumber().subscribe(last => { this.populate(last); }); }, 1500 * i); //replace with backend function?????
-      }
-    }
-
-  }
-
 }

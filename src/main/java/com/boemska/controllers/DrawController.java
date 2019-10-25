@@ -1,5 +1,4 @@
 package com.boemska.controllers;
-
 import com.boemska.data.*;
 import com.boemska.helpers.NumberGenerator;
 import com.boemska.repos.TicketRepository;
@@ -13,28 +12,35 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
+import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
+
 //postoji mogucnost da ovo ne radi kako treba za mnogo klijenata zbog multithreadinga pri ovim zahtevima, mozda je potrebno napraviti @Bean-ove za tickets,stats,started
 //i proveriti da li ovaj websocket salje svima nezavisno od toga koji je kontroler pozvan
 @RestController
 public class DrawController {
+
     @Autowired
     private WinnerRepository winnerRepository;
+
     @Autowired
     private TicketRepository ticketRepository;
+
     private final SimpMessagingTemplate template;
+
     @Autowired
     private TicketsBean tickets;
+
     @Autowired
     DrawController(SimpMessagingTemplate template) {
         this.template = template;
     }
-    //jedna ready varijabla? kad se zavrsi prepare
 
     private ArrayList<StatsHolder> stats = new ArrayList<>();
+    private boolean isDone = false;
+
     private void loadAll() {
         tickets.setTickets((ArrayList<Ticket>) ticketRepository.findAll());
     }
@@ -49,9 +55,15 @@ public class DrawController {
 
     @CrossOrigin()
     @GetMapping("/prepare")
-    //TODO: load on startup, update on ticketadd?
+    public void isDone() throws InterruptedException {
+        while (!isDone) {
+            Thread.sleep(500);
+        }
+    }
+
+    @PostConstruct
     public void prepare() {
-        if (tickets.getThreeComboTicketMap().size() != 0) // temporary workaround
+        if (tickets.getThreeComboTicketMap().size() != 0)
             return;
         this.loadAll();
         for (Ticket ticket : this.tickets.getTickets()) {
@@ -64,15 +76,15 @@ public class DrawController {
                             temporaryMap.add(ticket);
                             break;
                         case 4:
-                            temporaryMap=this.tickets.getFourComboTicketMap().computeIfAbsent(new FourCombo(combination), element -> new ArrayList<>());
+                            temporaryMap = this.tickets.getFourComboTicketMap().computeIfAbsent(new FourCombo(combination), element -> new ArrayList<>());
                             temporaryMap.add(ticket);
                             break;
                         case 5:
-                            temporaryMap=this.tickets.getFiveComboTicketMap().computeIfAbsent(new FiveCombo(combination), element -> new ArrayList<>());
+                            temporaryMap = this.tickets.getFiveComboTicketMap().computeIfAbsent(new FiveCombo(combination), element -> new ArrayList<>());
                             temporaryMap.add(ticket);
                             break;
                         case 6:
-                            temporaryMap=this.tickets.getSixComboTicketMap().computeIfAbsent(new SixCombo(combination), element -> new ArrayList<>());
+                            temporaryMap = this.tickets.getSixComboTicketMap().computeIfAbsent(new SixCombo(combination), element -> new ArrayList<>());
                             temporaryMap.add(ticket);
                             break;
                         case 7:
@@ -83,27 +95,28 @@ public class DrawController {
                 };
                 Generator.combination(ticket.getNumberList()).simple(comboLength).forEach(save);
             }
-
         }
+        isDone = true;
     }
-
 
     @MessageMapping("/draw/start")
     public void start() throws InterruptedException {
         System.out.println("received message");
         for (int i = 0; i < 7; i++) {
-            StatsHolder tmp = this.getStats(this.draw());
-            this.stats.add(tmp);
-            this.template.convertAndSend("/draw", tmp);
-            Thread.sleep(2000);
+            Thread.sleep(6000); //simulacija kasnjenja odnosno izvlacenja brojeva
+            StatsHolder temp = this.getStats(this.draw());
+            this.stats.add(temp);
+            this.template.convertAndSend("/draw", temp);
+
         }
     }
 
     @SubscribeMapping("/draw")
-    public List<StatsHolder> onSubscribe(){
+    public List<StatsHolder> onSubscribe() {
         System.out.println("client subscribed");
         return this.stats;
     }
+
     @CrossOrigin
     @GetMapping("/reset")
     public void reset() {
