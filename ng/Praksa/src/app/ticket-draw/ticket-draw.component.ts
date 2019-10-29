@@ -22,7 +22,7 @@ export class TicketDrawComponent implements OnInit,OnDestroy {
   }
 
   //#region WebSocket service?
-  serverURL = "http://'+116.202.13.157+':8080/socket";
+  serverURL = "http://"+116.202.13.157+":8080/socket";
   ws;
   private stompClient;
   connect(): Promise<any> { //change to promise/observable
