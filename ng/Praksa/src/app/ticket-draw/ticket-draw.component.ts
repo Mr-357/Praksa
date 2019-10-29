@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ViewChildren, QueryList } from '@angular/core';
+import { Component, OnInit, ViewChild, ViewChildren, QueryList, OnDestroy } from '@angular/core';
 import { TicketsService } from '../tickets.service';
 import { CookieService } from 'ngx-cookie-service';
 import { Ticket } from '../ticket';
@@ -16,7 +16,10 @@ import { LottoBallComponent } from '../lotto-ball/lotto-ball.component';
   templateUrl: './ticket-draw.component.html',
   styleUrls: ['./ticket-draw.component.css']
 })
-export class TicketDrawComponent implements OnInit {
+export class TicketDrawComponent implements OnInit,OnDestroy {
+  ngOnDestroy(): void {
+    this.disconnect();
+  }
 
   //#region WebSocket service?
   serverURL = "http://localhost:8080/socket";
@@ -26,6 +29,7 @@ export class TicketDrawComponent implements OnInit {
     return new Promise((resolve, reject) => {
       this.ws = new SockJS(this.serverURL);
       this.stompClient = Stomp.over(this.ws);
+      this.stompClient.debug= () => {} ;
       this.stompClient.connect({},
         (result) => resolve(result),
         (error) => reject(error)
@@ -108,17 +112,14 @@ export class TicketDrawComponent implements OnInit {
   }
   pull(){
     let n = Math.floor(Math.random()*38)+1;
-    console.log(n);
     this.balls.find(x=>x.number==(n)).anim(0);
   }
 
   checkTicket() {
-    console.log(this.cookies.get('ticket-id').length == 0);
     return this.cookies.get('ticket-id').length == 0;
   }
 
   populate(response) {   //change to stats model?
-    console.log(response);
     if(isArray(response))
     {
       response.forEach(x=>this.populate(x));
@@ -136,12 +137,10 @@ export class TicketDrawComponent implements OnInit {
       let ball = this.balls.find(x=>x.number == response.lastDrawn);
       ball.anim((this.winningCombo.length-1)*30);
       if (field.marked == true) {
-        console.log("hit");
         field.hit = true;
       }
       else {
         field.miss = true;
-        console.log("miss");
       }
       if(this.winningCombo.length==7){
         this.resetBalls();

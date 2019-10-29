@@ -19,7 +19,7 @@ var length = 15;
       }), {params : {offset:0}}),
       transition('first=>second', animate('9000ms ease-in')),
       transition('second=>first', animate('50ms')),
-      transition('*=>third',animate('150ms ease-in'))
+      transition('*=>third',animate('250ms ease-out'))
     ]),
   ]
 })
@@ -39,7 +39,6 @@ export class LottoBallComponent implements OnInit {
     }
     this.currentState = this.states.pop();
     this.states.unshift(this.currentState);
-    console.log(this.currentState);
   }
   @Input() number;
   displayNumber;
