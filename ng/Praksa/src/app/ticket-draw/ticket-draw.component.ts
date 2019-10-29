@@ -104,13 +104,12 @@ export class TicketDrawComponent implements OnInit {
         setTimeout(()=>x.changeState(),500);
         setTimeout(()=>x.changeState(),650);
       }
-
     });
   }
   pull(){
     let n = Math.floor(Math.random()*38)+1;
     console.log(n);
-    this.balls.find(x=>x.number==(n)).anim();
+    this.balls.find(x=>x.number==(n)).anim(0);
   }
 
   checkTicket() {
@@ -135,7 +134,7 @@ export class TicketDrawComponent implements OnInit {
       this.winningCombo.sort((a, b) => a - b);
       let field = this.ticketService.fields.find(x => x.value == this.last);
       let ball = this.balls.find(x=>x.number == response.lastDrawn);
-      ball.anim();
+      ball.anim((this.winningCombo.length-1)*30);
       if (field.marked == true) {
         console.log("hit");
         field.hit = true;
@@ -144,8 +143,18 @@ export class TicketDrawComponent implements OnInit {
         field.miss = true;
         console.log("miss");
       }
-  
+      if(this.winningCombo.length==7){
+        this.resetBalls();
+      }
     }
     
+  }
+  resetBalls() {
+    this.balls.forEach(x=>{
+      if(!this.winningCombo.includes(x.number))
+      {
+        setTimeout(()=>x.goBack(),100);
+      }
+    });
   }
 }

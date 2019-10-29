@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class TicketController {
 
-    private List<Integer> checker = new ArrayList<Integer>(); //helper structure for validating tickets
+    private List<Integer> checker = new ArrayList<Integer>();
     @Autowired
     private TicketRepository ticketRepository;
     @Autowired

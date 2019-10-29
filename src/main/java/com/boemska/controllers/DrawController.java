@@ -99,7 +99,7 @@ public class DrawController {
         isDone = true;
     }
 
-    @MessageMapping("/draw/start")
+    @MessageMapping("/draw/start") //potreban jedan semafor ako zelimo vise klijenata
     public void start() throws InterruptedException {
         System.out.println("received message");
         for (int i = 0; i < 7; i++) {
@@ -161,14 +161,12 @@ public class DrawController {
         return completedSearch;
     }
 
-    // TODO: tidy up
     public StatsHolder getStats(int lastDrawnNumber) {
         StatsHolder currentStats = new StatsHolder();
         currentStats.lastDrawn = lastDrawnNumber;
         currentStats.total = (int) ticketRepository.count();
         int[] luckiest = new int[39];
         int[] mostpicked = new int[39];
-        // this.prepare();   //   nije potrebno ako je vec izvlaceno??
         List<Winner> winners = winnerRepository.findAll();
         for (int i = 0; i < 39; i++) {
             luckiest[i] = 0;

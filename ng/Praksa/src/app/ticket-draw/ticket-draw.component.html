@@ -4,29 +4,37 @@
         
     </div>
     <ng-template #elseTemplate>
-    <div>Last drawn number: {{last}}</div>
+        <div class="lotto-container">
+                <div class="ball-container"> 
+                        <app-lotto-ball *ngFor="let item of ballnumbers" [number]=item>
+                
+                        </app-lotto-ball>
+                      
+                </div>
+                <div class="stats">
+                <p>Number of: 
+                        <br>
+                        Threes:{{threes}}
+                        <br>
+                        Fours:{{fours}}
+                        <br>
+                        Fives:{{fives}}
+                        <br>
+                        Sixes:{{sixes}}
+                        <br>
+                        Sevens:{{sevens}}
+                        <br>
+                </p>
+            </div>
+        </div>
+         
+   
     <div>Winning combination: {{winningCombo.toString()}}</div>
-    <p>Number of: 
-        <br>
-        Threes:{{threes}}
-        <br>
-        Fours:{{fours}}
-        <br>
-        Fives:{{fives}}
-        <br>
-        Sixes:{{sixes}}
-        <br>
-        Sevens:{{sevens}}
-        <br>
-    </p>
-    <div class="ball-container"> 
-    <app-lotto-ball *ngFor="let item of ballnumbers" [number]=item>
-
-    </app-lotto-ball>
-    </div>
+   
+    
    
     <!-- <button (click)="draw()">Draw!</button> -->
     <button (click)="test()">draw</button>
-    <button (click)="pull()">pull</button>
+    <!-- <button (click)="pull()">pull</button> -->
     </ng-template>
 </div>

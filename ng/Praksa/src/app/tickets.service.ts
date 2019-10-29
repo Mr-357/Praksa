@@ -76,7 +76,7 @@ export class TicketsService {
   }
 
   getTickets(page): Observable<Ticket[]> {
-    return this.http.get<Ticket[]>('http://localhost:8080/tickets?n=' + page);
+    return this.http.get<Ticket[]>('http://localhost:8080/tickets?pageNumber=' + page);
   }
 
   getTicket(id: string): Observable<Ticket> {
