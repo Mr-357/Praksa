@@ -30,7 +30,7 @@ export class TicketsService {
   }
 
   init() {
-    return this.http.get('http://'+hostip+':8080/prepare');
+    return this.http.get('http://'+this.hostip+':8080/prepare');
   }
 
   public showModal(message: String, title: String) {
@@ -47,7 +47,7 @@ export class TicketsService {
   }
 
   reset() {
-    return this.http.get('http://'+hostip+':8080/reset');
+    return this.http.get('http://'+this.hostip+':8080/reset');
   }
 
   getNumbers() {
@@ -55,7 +55,7 @@ export class TicketsService {
   }
 
   getPages(): Observable<Number> {
-    return this.http.get<Number>('http://'+hostip+':8080/pages');
+    return this.http.get<Number>('http://'+this.hostip+':8080/pages');
   }
 
   generateRandom() {
@@ -76,15 +76,15 @@ export class TicketsService {
   }
 
   getTickets(page): Observable<Ticket[]> {
-    return this.http.get<Ticket[]>('http://'+hostip+':8080/tickets?pageNumber=' + page);
+    return this.http.get<Ticket[]>('http://'+this.hostip+':8080/tickets?pageNumber=' + page);
   }
 
   getTicket(id: string): Observable<Ticket> {
-    return this.http.get<Ticket>('http://'+hostip+':8080/tickets/single?id=' + id);
+    return this.http.get<Ticket>('http://'+this.hostip+':8080/tickets/single?id=' + id);
   }
 
   createTicket(ticket: NumberHolder) {
-    return this.http.post<IDHolder>('http://'+hostip+':8080/register', ticket);
+    return this.http.post<IDHolder>('http://'+this.hostip+':8080/register', ticket);
   }
 
   addNumber(value: number): Observable<number> {
@@ -106,7 +106,7 @@ export class TicketsService {
   }
 
   drawNumber(): Observable<number> {
-    return this.http.get<number>('http://'+hostip+':8080/draw');
+    return this.http.get<number>('http://'+this.hostip+':8080/draw');
   }
 
   private handleError(error: HttpErrorResponse) {//change
